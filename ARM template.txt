@@ -1,0 +1,90 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "String"
+        },
+        "accountType": {
+            "type": "String"
+        },
+        "kind": {
+            "type": "String"
+        },
+        "accessTier": {
+            "type": "String"
+        },
+        "supportsHttpsTrafficOnly": {
+            "type": "Bool"
+        }
+    },
+    "variables": {
+        "storageAccountName": "[concat(uniqueString(subscription().subscriptionId), 'storage')]",
+        "policyName": "DefaultManagementPolicy"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-07-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [],
+            "sku": {
+                "name": "[parameters('accountType')]"
+           },
+            "kind": "[parameters('kind')]",
+            "properties": {
+                "accessTier": "[parameters('accessTier')]",
+                "supportsHttpsTrafficOnly": "[parameters('supportsHttpsTrafficOnly')]"
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+                    "apiVersion": "2019-04-01",
+                    "name": "[concat(variables('storageAccountName'), '/default')]",
+                    "dependsOn": [
+                        "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
+                    ],
+                    "properties": {
+                        "policy": {
+                            "rules": [
+                                {
+                                    "enabled": true,
+                                    "name": "archiveRule",
+                                    "type": "Lifecycle",
+                                    "definition": {
+                                        "filters": {
+                                            "blobTypes": [
+                                                "blockBlob"
+                                            ]
+                                        },
+                                        "actions": {
+                                            "baseBlob": {
+                                                "tierToCool": {
+                                                    "daysAfterModificationGreaterThan": 30
+                                                },
+                                                "tierToArchive": {
+                                                    "daysAfterModificationGreaterThan": 90
+                                                },
+                                                "delete": {
+                                                    "daysAfterModificationGreaterThan": 1000
+                                                }
+                                            },
+                                            "snapshot": {
+                                                "delete": {
+                                                    "daysAfterCreationGreaterThan": 30
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "lastModifiedTime": "2019-04-29T16:10:04.3935229Z"
+                    }
+                }
+            ]
+        }
+    ],
+    "outputs": {}
+}
